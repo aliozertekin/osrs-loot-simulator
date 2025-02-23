@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loot Simulator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Loot Simulator</h1>
+        <form id="simulateForm">
+            <label for="kc_count">Kill Count:</label>
+            <input type="number" id="kc_count" name="kc_count" value="105" min="1" required>
+            <br>
+            <h3>Select Bosses:</h3>
+            <label>
+                <input type="checkbox" name="bosses" value="Blood Moon" checked> Blood Moon
+            </label>
+            <label>
+                <input type="checkbox" name="bosses" value="Blue Moon" checked> Blue Moon
+            </label>
+            <label>
+                <input type="checkbox" name="bosses" value="Eclipse Moon" checked> Eclipse Moon
+            </label>
+            <br>
+            <button type="submit">Simulate</button>
+        </form>
+        <h2>Results:</h2>
+        <div id="results"></div>
+    </div>
+
+    <script>
+        document.getElementById("simulateForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const bosses = Array.from(formData.getAll("bosses"));
+            const data = {
+                kc_count: formData.get("kc_count"),
+                bosses: bosses,
+            };
+
+            const response = await fetch("/simulate", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(data),
+            });
+
+            const result = await response.json();
+            const resultsDiv = document.getElementById("results");
+            resultsDiv.innerHTML = `
+                <h3>Total Loot:</h3>
+                <ul>
+                    ${Object.entries(result.loot).map(([item, quantity]) => `
+                        <li>
+                            <img src="{{ url_for('static', filename='images/') }}${item.replace(/ /g, '_')}.webp" alt="${item}" class="item-image">
+                            ${quantity}x ${item}
+                        </li>
+                    `).join("")}
+                </ul>
+                <h3>Total Value: ${result.total_value}</h3>
+            `;
+        });
+    </script>
+</body>
+</html>
