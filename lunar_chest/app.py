@@ -1,5 +1,5 @@
-from flask import Flask, render_template, request, jsonify
-import random
+from flask import Flask, render_template, request, jsonify, Response
+import random, json, time
 
 app = Flask(__name__)
 
@@ -70,11 +70,15 @@ def simulate_loot(bosses, unique_items_pool):
 def home():
     return render_template("index.html")
 
-@app.route("/simulate", methods=["POST"])
+@app.route("/simulate", methods=["GET", "POST"])
 def simulate():
-    data = request.json
-    kc_count = int(data.get("kc_count", 105))
-    bosses = data.get("bosses", ["Blood Moon", "Blue Moon", "Eclipse Moon"])
+    if request.method == "POST":
+        data = request.json
+        kc_count = int(data.get("kc_count", 105))
+        bosses = data.get("bosses", ["Blood Moon", "Blue Moon", "Eclipse Moon"])
+    elif request.method == "GET":
+        kc_count = int(request.args.get("kc_count", 105))
+        bosses = request.args.get("bosses", "Blood Moon,Blue Moon,Eclipse Moon").split(",")
 
     # Track total loot and value across all simulations
     total_loot = {}
@@ -102,44 +106,53 @@ def simulate():
         },
     }
 
-    for _ in range(kc_count):
-        loot, value, unique_items_pool = simulate_loot(bosses, unique_items_pool)
-        total_value += value
-        for item, quantity in loot.items():
-            if item in total_loot:
-                total_loot[item] += quantity
-            else:
-                total_loot[item] = quantity
+    def generate():
+        nonlocal unique_items_pool, total_loot, total_value  # Allow modification of outer scope variables
+        for kc in range(1, kc_count + 1):
+            loot, value, unique_items_pool = simulate_loot(bosses, unique_items_pool)
+            total_value += value
+            for item, quantity in loot.items():
+                if item in total_loot:
+                    total_loot[item] += quantity
+                else:
+                    total_loot[item] = quantity
 
-        # Reset the unique items pool for a boss if all items have been obtained
-        for boss in bosses:
-            if not unique_items_pool[boss]:
-                if boss == "Blood Moon":
-                    unique_items_pool[boss] = {
-                        "Blood moon helm": unique_items["Blood moon helm"],
-                        "Blood moon chestplate": unique_items["Blood moon chestplate"],
-                        "Blood moon tassets": unique_items["Blood moon tassets"],
-                        "Dual macuahuitl": unique_items["Dual macuahuitl"],
-                    }
-                elif boss == "Blue Moon":
-                    unique_items_pool[boss] = {
-                        "Blue moon spear": unique_items["Blue moon spear"],
-                        "Blue moon helm": unique_items["Blue moon helm"],
-                        "Blue moon chestplate": unique_items["Blue moon chestplate"],
-                        "Blue moon tassets": unique_items["Blue moon tassets"],
-                    }
-                elif boss == "Eclipse Moon":
-                    unique_items_pool[boss] = {
-                        "Eclipse atlatl": unique_items["Eclipse atlatl"],
-                        "Eclipse moon helm": unique_items["Eclipse moon helm"],
-                        "Eclipse moon chestplate": unique_items["Eclipse moon chestplate"],
-                        "Eclipse moon tassets": unique_items["Eclipse moon tassets"],
-                    }
+            # Reset the unique items pool for a boss if all items have been obtained
+            for boss in bosses:
+                if not unique_items_pool[boss]:
+                    if boss == "Blood Moon":
+                        unique_items_pool[boss] = {
+                            "Blood moon helm": unique_items["Blood moon helm"],
+                            "Blood moon chestplate": unique_items["Blood moon chestplate"],
+                            "Blood moon tassets": unique_items["Blood moon tassets"],
+                            "Dual macuahuitl": unique_items["Dual macuahuitl"],
+                        }
+                    elif boss == "Blue Moon":
+                        unique_items_pool[boss] = {
+                            "Blue moon spear": unique_items["Blue moon spear"],
+                            "Blue moon helm": unique_items["Blue moon helm"],
+                            "Blue moon chestplate": unique_items["Blue moon chestplate"],
+                            "Blue moon tassets": unique_items["Blue moon tassets"],
+                        }
+                    elif boss == "Eclipse Moon":
+                        unique_items_pool[boss] = {
+                            "Eclipse atlatl": unique_items["Eclipse atlatl"],
+                            "Eclipse moon helm": unique_items["Eclipse moon helm"],
+                            "Eclipse moon chestplate": unique_items["Eclipse moon chestplate"],
+                            "Eclipse moon tassets": unique_items["Eclipse moon tassets"],
+                        }
 
-    # Replace spaces with underscores in item names for image filenames
-    formatted_loot = {item.replace(" ", "_"): quantity for item, quantity in total_loot.items()}
-    return jsonify({"loot": formatted_loot, "total_value": total_value})
+            # Replace spaces with underscores in item names for image filenames
+            formatted_loot = {item.replace(" ", "_"): quantity for item, quantity in total_loot.items()}
+
+            # Yield the current KC and loot
+            yield f"data: {json.dumps({'kc': kc, 'loot': formatted_loot, 'total_value': total_value})}\n\n"
+
+            # Add a small delay (2ms) between updates
+            time.sleep(0.005)
+
+    return Response(generate(), mimetype="text/event-stream")
 
 if __name__ == "__main__":
     # Replace 'localhost' with your IP address
-    app.run(host="localhost", port=5000, debug=True)
+    app.run(host="172.27.177.126", port=5000, debug=True)
