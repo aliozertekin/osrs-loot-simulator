@@ -41,7 +41,6 @@ input, button {
     width: 100%;
     padding: 10px;
     margin-bottom: 15px;
-    margin-right: -45px;
     border: 1px solid #444; /* Dark border */
     border-radius: 5px;
     font-family: 'Roboto Mono', monospace;
@@ -129,7 +128,7 @@ button:hover {
 .item-image {
     width: 32px;
     height: 32px;
-    object-fit: contain; /* Ensure images maintain aspect ratio */
+    object-fit: none; /* Ensure images maintain aspect ratio */
 }
 
 /* Custom Scrollbar */
