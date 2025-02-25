@@ -148,3 +148,17 @@ button:hover {
 ::-webkit-scrollbar-thumb:hover {
     background: #666; /* Lighter scrollbar thumb on hover */
 }
+
+/* Unique Items Header */
+#results h3.unique-header {
+    color: #ff6b6b; /* Red color for unique items */
+    margin-top: 20px;
+    margin-bottom: 10px;
+}
+
+/* Common Items Header */
+#results h3.common-header {
+    color: #4ecdc4; /* Teal color for common items */
+    margin-top: 20px;
+    margin-bottom: 10px;
+}

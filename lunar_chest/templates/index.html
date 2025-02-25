@@ -34,39 +34,59 @@
     </div>
 
     <script>
-        document.getElementById("simulateForm").addEventListener("submit", async (e) => {
+        document.getElementById("simulateForm").addEventListener("submit", (e) => {
             e.preventDefault();
             const formData = new FormData(e.target);
-            const data = {
-                kc_count: formData.get("kc_count"),
-                bosses: Array.from(formData.getAll("bosses")),
-            };
+            const kc_count = formData.get("kc_count");
+            const bosses = Array.from(formData.getAll("bosses")).join(",");
 
             // Clear previous results
             const resultsDiv = document.getElementById("results");
             resultsDiv.innerHTML = "";
 
-            // Create a new EventSource to listen for updates
-            const eventSource = new EventSource(`/simulate?kc_count=${data.kc_count}&bosses=${data.bosses.join(",")}`);
+            // Create an EventSource to listen for SSE
+            const eventSource = new EventSource(`/simulate?kc_count=${kc_count}&bosses=${bosses}`);
 
             eventSource.onmessage = (event) => {
                 const result = JSON.parse(event.data);
-                resultsDiv.innerHTML = `
-                    <h3>KC: ${result.kc}</h3>
+
+                // Render unique items
+                const uniqueItemsHTML = `
+                    <h3>Unique Items:</h3>
                     <ul>
-                        ${Object.entries(result.loot).map(([item, quantity]) => `
+                        ${Object.entries(result.unique_loot).map(([item, quantity]) => `
                             <li>
                                 <img src="{{ url_for('static', filename='images/') }}${item}.webp" alt="${item}" class="item-image">
                                 ${quantity}x ${item.replace(/_/g, " ")}
                             </li>
                         `).join("")}
                     </ul>
+                `;
+
+                // Render common items
+                const commonItemsHTML = `
+                    <h3>Common Items:</h3>
+                    <ul>
+                        ${Object.entries(result.common_loot).map(([item, quantity]) => `
+                            <li>
+                                <img src="{{ url_for('static', filename='images/') }}${item}.webp" alt="${item}" class="item-image">
+                                ${quantity}x ${item.replace(/_/g, " ")}
+                            </li>
+                        `).join("")}
+                    </ul>
+                `;
+
+                // Display results
+                resultsDiv.innerHTML = `
+                    <h3>KC: ${result.kc}</h3>
+                    ${uniqueItemsHTML}
+                    ${commonItemsHTML}
                     <h3>Total Value: ${result.total_value}</h3>
                 `;
             };
 
             eventSource.onerror = () => {
-                eventSource.close(); // Close the connection when done
+                eventSource.close(); // Close the connection on error
             };
         });
     </script>
